@@ -35,6 +35,7 @@ export default function HomeScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [stocks, setStocks] = useState([]);
+  const [popularStocksData, setPopularStocksData] = useState([]);
   const [lastFetchTime, setLastFetchTime] = useState(0);
 
   const handleSearch = (text) => {
@@ -52,25 +53,15 @@ export default function HomeScreen({ navigation }) {
       setError(null);
       console.log('Starting to fetch stocks...');
 
-      const popularStocks = [
-        'RELIANCE.NS',
-        'TCS.NS',
-        'HDFCBANK.NS',
-        'INFY.NS',
-        'ICICIBANK.NS'
-      ];
-
-      const stockPromises = popularStocks.map(async (symbol) => {
-        console.log(`Fetching data for ${symbol}`);
+      const stockPromises = popularStocks.map(async (stock) => {
+        console.log(`Fetching data for ${stock.symbol}`);
         try {
           const response = await axios.get(
-            `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=1d`
+            `https://query1.finance.yahoo.com/v8/finance/chart/${stock.symbol}?interval=1d&range=1d`
           );
 
-          console.log(`Response for ${symbol}:`, JSON.stringify(response.data, null, 2));
-
           if (!response.data.chart.result || response.data.chart.result.length === 0) {
-            console.warn(`No data found for ${symbol}`);
+            console.warn(`No data found for ${stock.symbol}`);
             return null;
           }
 
@@ -79,7 +70,7 @@ export default function HomeScreen({ navigation }) {
           const quote = stockData.indicators.quote[0];
 
           if (!meta || !quote) {
-            console.warn(`Invalid data structure for ${symbol}`);
+            console.warn(`Invalid data structure for ${stock.symbol}`);
             return null;
           }
 
@@ -90,26 +81,26 @@ export default function HomeScreen({ navigation }) {
 
           return {
             symbol: meta.symbol,
-            name: meta.longName || meta.shortName || symbol,
+            name: meta.longName || meta.shortName || stock.name,
             price: currentPrice?.toString() || '0.00',
             change: change?.toString() || '0.00',
             changePercent: changePercent?.toString() || '0.00'
           };
         } catch (error) {
-          console.error(`Error fetching ${symbol}:`, error);
+          console.error(`Error fetching ${stock.symbol}:`, error);
           return null;
         }
       });
 
-      const stocks = (await Promise.all(stockPromises)).filter(Boolean);
-      console.log('All stocks fetched:', JSON.stringify(stocks, null, 2));
+      const fetchedStocks = (await Promise.all(stockPromises)).filter(Boolean);
+      console.log('All stocks fetched:', JSON.stringify(fetchedStocks, null, 2));
 
-      if (stocks.length === 0) {
+      if (fetchedStocks.length === 0) {
         setError('No valid stock data found');
         return;
       }
 
-      setStocks(stocks);
+      setPopularStocksData(fetchedStocks);
     } catch (error) {
       console.error('Error fetching stock data:', error);
       setError('Failed to fetch stock data');
@@ -354,7 +345,7 @@ export default function HomeScreen({ navigation }) {
         <Text style={[styles.errorText, { color: theme.error }]}>{error}</Text>
       ) : (
         <ScrollView style={styles.stockList}>
-          {searchQuery ? (
+          {searchQuery && (
             <>
               <Text style={[styles.sectionTitle, { color: theme.text }]}>Search Results</Text>
               {stocks.length > 0 ? (
@@ -371,7 +362,7 @@ export default function HomeScreen({ navigation }) {
                       <Text style={[styles.stockSymbol, { color: theme.textSecondary }]}>{stock.symbol}</Text>
                       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                         <Text style={[styles.stockPrice, { color: theme.text }]}>
-                          ₹{parseFloat(stock.price).toLocaleString('en-IN')}
+                          ₹{parseFloat(stock.price).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2})}
                         </Text>
                         <Text
                           style={[
@@ -390,39 +381,37 @@ export default function HomeScreen({ navigation }) {
                 <Text style={[styles.noResults, { color: theme.textSecondary }]}>No stocks found</Text>
               )}
             </>
-          ) : (
-            <>
-              <Text style={[styles.sectionTitle, { color: theme.text }]}>Popular Stocks</Text>
-              {stocks.map((stock) => {
-                const change = parseFloat(stock.change);
-                const changePercent = parseFloat(stock.changePercent);
-                return (
-                  <TouchableOpacity
-                    key={stock.symbol}
-                    style={[styles.stockCard, { backgroundColor: theme.card, borderColor: theme.border }]}
-                    onPress={() => navigation.navigate('StockDetail', { symbol: stock.symbol })}
-                  >
-                    <Text style={[styles.stockName, { color: theme.text }]}>{stock.name}</Text>
-                    <Text style={[styles.stockSymbol, { color: theme.textSecondary }]}>{stock.symbol}</Text>
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                      <Text style={[styles.stockPrice, { color: theme.text }]}>
-                        ₹{parseFloat(stock.price).toLocaleString('en-IN')}
-                      </Text>
-                      <Text
-                        style={[
-                          styles.priceChange,
-                          change >= 0 ? styles.priceChangePositive : styles.priceChangeNegative,
-                        ]}
-                      >
-                        {change >= 0 ? '+' : ''}
-                        {change.toFixed(2)}% ({change >= 0 ? '↑' : '↓'})
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-                );
-              })}
-            </>
           )}
+          
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>Popular Stocks</Text>
+          {popularStocksData.map((stock) => {
+            const change = parseFloat(stock.change);
+            const changePercent = parseFloat(stock.changePercent);
+            return (
+              <TouchableOpacity
+                key={stock.symbol}
+                style={[styles.stockCard, { backgroundColor: theme.card, borderColor: theme.border }]}
+                onPress={() => navigation.navigate('StockDetail', { symbol: stock.symbol })}
+              >
+                <Text style={[styles.stockName, { color: theme.text }]}>{stock.name}</Text>
+                <Text style={[styles.stockSymbol, { color: theme.textSecondary }]}>{stock.symbol}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Text style={[styles.stockPrice, { color: theme.text }]}>
+                    ₹{parseFloat(stock.price).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2})}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.priceChange,
+                      change >= 0 ? styles.priceChangePositive : styles.priceChangeNegative,
+                    ]}
+                  >
+                    {change >= 0 ? '+' : ''}
+                    {change.toFixed(2)}% ({change >= 0 ? '↑' : '↓'})
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            );
+          })}
         </ScrollView>
       )}
     </View>
@@ -432,51 +421,65 @@ export default function HomeScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#000000',
   },
   header: {
     padding: 16,
+    backgroundColor: '#000000',
     borderBottomWidth: 1,
+    borderBottomColor: '#333333',
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: '#1A1A1A',
     borderRadius: 8,
     paddingHorizontal: 12,
     marginBottom: 16,
     borderWidth: 1,
+    borderColor: '#333333',
   },
   searchInput: {
     flex: 1,
     height: 40,
     fontSize: 16,
+    color: '#FFFFFF',
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 12,
     marginTop: 8,
+    color: '#FFFFFF',
+    paddingHorizontal: 16,
   },
   stockList: {
     paddingHorizontal: 16,
   },
   stockCard: {
+    backgroundColor: '#1A1A1A',
     borderRadius: 8,
     padding: 16,
+    marginHorizontal: 16,
     marginBottom: 12,
     borderWidth: 1,
+    borderColor: '#333333',
   },
   stockName: {
     fontSize: 16,
     fontWeight: 'bold',
+    color: '#FFFFFF',
     marginBottom: 4,
   },
   stockSymbol: {
     fontSize: 14,
+    color: '#999999',
     marginBottom: 8,
   },
   stockPrice: {
     fontSize: 18,
     fontWeight: 'bold',
+    color: '#FFFFFF',
   },
   priceChange: {
     fontSize: 14,
@@ -492,6 +495,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 20,
     fontSize: 16,
+    color: '#999999',
   },
   errorText: {
     textAlign: 'center',
@@ -506,5 +510,6 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     marginTop: 8,
+    color: '#FFFFFF',
   },
 }); 

@@ -1,10 +1,11 @@
 import React, { createContext, useContext } from 'react';
 
 export const darkTheme = {
-  background: '#121212',
+  background: '#7B7979',
   surface: '#1E1E1E',
   primary: '#BB86FC',
   text: '#FFFFFF',
+ 
   textSecondary: '#B3B3B3',
   positive: '#00E096',
   negative: '#FF4C4C',

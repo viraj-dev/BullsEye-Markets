@@ -22,19 +22,31 @@ const screenWidth = Dimensions.get('window').width;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#000000',
   },
   header: {
     padding: 16,
     alignItems: 'center',
+    backgroundColor: '#121212',
+    borderBottomWidth: 1,
+    borderBottomColor: '#333333',
+  },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%',
+    marginBottom: 8,
   },
   symbol: {
     fontSize: 24,
     fontWeight: 'bold',
-    marginBottom: 8,
+    color: '#FFFFFF',
   },
   price: {
     fontSize: 32,
     fontWeight: 'bold',
+    color: '#FFFFFF',
     marginBottom: 8,
   },
   change: {
@@ -45,53 +57,72 @@ const styles = StyleSheet.create({
     margin: 16,
     padding: 16,
     borderRadius: 8,
+    backgroundColor: '#121212',
     borderWidth: 1,
+    borderColor: '#333333',
   },
   timeRangeContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
+    justifyContent: 'space-between',
     marginBottom: 16,
+    paddingHorizontal: 8,
   },
   timeRangeButton: {
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
+    backgroundColor: '#1A1A1A',
+    borderWidth: 1,
+    borderColor: '#333333',
   },
   timeRangeButtonText: {
     fontSize: 14,
     fontWeight: 'bold',
+    color: '#FFFFFF',
   },
   chart: {
-    marginVertical: 8,
-    borderRadius: 16,
+    marginTop: 8,
+    padding: 8,
   },
   detailsContainer: {
     margin: 16,
     padding: 16,
     borderRadius: 8,
+    backgroundColor: '#121212',
     borderWidth: 1,
+    borderColor: '#333333',
   },
   detailsTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 16,
+    color: '#FFFFFF',
   },
   detailsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 12,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#333333',
   },
   detailsLabel: {
     fontSize: 16,
+    color: '#999999',
   },
   detailsValue: {
     fontSize: 16,
     fontWeight: 'bold',
+    color: '#FFFFFF',
   },
   errorText: {
     textAlign: 'center',
     marginTop: 20,
     fontSize: 16,
+    color: '#F44336',
+  },
+  watchlistButton: {
+    padding: 8,
   },
 });
 
@@ -107,6 +138,9 @@ export default function StockDetailScreen({ route, navigation }) {
   const [chartData, setChartData] = useState(null);
 
   useEffect(() => {
+    if (stockData) {
+      console.log("chartPreviousClose value:", stockData?.chartPreviousClose, typeof stockData?.chartPreviousClose);
+    }
     setInWatchlist(isInWatchlist(symbol));
   }, [symbol, isInWatchlist]);
 
@@ -141,12 +175,7 @@ export default function StockDetailScreen({ route, navigation }) {
               strokeWidth: 2
             }]
           };
-
-          console.log('Chart data prepared:', chartData);
           setChartData(chartData);
-        } else {
-          console.warn('No valid chart data available');
-          setChartData(null);
         }
       }
 
@@ -155,10 +184,7 @@ export default function StockDetailScreen({ route, navigation }) {
         `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=1d`
       );
 
-      console.log('Stock data response:', JSON.stringify(response.data, null, 2));
-
       if (!response.data.chart.result || response.data.chart.result.length === 0) {
-        console.warn('No data found for symbol:', symbol);
         setError('No data available for this stock');
         return;
       }
@@ -168,31 +194,31 @@ export default function StockDetailScreen({ route, navigation }) {
       const quote = stockData.indicators.quote[0];
 
       if (!meta || !quote) {
-        console.warn('Invalid data structure for symbol:', symbol);
         setError('Invalid stock data received');
         return;
       }
 
-      const currentPrice = meta.regularMarketPrice;
-      const previousClose = meta.chartPreviousClose;
+      const currentPrice = meta.regularMarketPrice || 0;
+      const previousClose = meta.chartPreviousClose || 0;
       const change = currentPrice - previousClose;
       const changePercent = (change / previousClose) * 100;
 
       setStockData({
         symbol: meta.symbol,
         name: meta.longName || meta.shortName || symbol,
-        price: currentPrice?.toString() || '0.00',
-        change: change?.toString() || '0.00',
-        changePercent: changePercent?.toString() || '0.00',
-        high: meta.regularMarketDayHigh?.toString() || '0.00',
-        low: meta.regularMarketDayLow?.toString() || '0.00',
-        volume: meta.regularMarketVolume?.toString() || '0',
-        marketCap: meta.marketCap?.toString() || '0',
-        peRatio: meta.trailingPE?.toString() || '0.00',
-        eps: meta.epsTrailingTwelveMonths?.toString() || '0.00',
-        dividendYield: meta.dividendYield?.toString() || '0.00'
+        price: currentPrice.toString(),
+        change: change.toString(),
+        changePercent: changePercent.toString(),
+        high: (meta.regularMarketDayHigh || 0).toString(),
+        low: (meta.regularMarketDayLow || 0).toString(),
+        volume: (meta.regularMarketVolume || 0).toString(),
+        marketCap: (meta.marketCap || 0).toString(),
+        peRatio: (meta.trailingPE || 0).toString(),
+        eps: (meta.epsTrailingTwelveMonths || 0).toString(),
+        dividendYield: (meta.dividendYield || 0).toString(),
+        chartPreviousClose: previousClose.toString(),
+        open: (quote.open?.[0] || 0).toString(),
       });
-
     } catch (error) {
       console.error('Error fetching stock data:', error);
       setError('Failed to fetch stock data');
@@ -221,13 +247,13 @@ export default function StockDetailScreen({ route, navigation }) {
     <TouchableOpacity
       style={[
         styles.timeRangeButton,
-        timeRange === range && { backgroundColor: theme.primary }
+        timeRange === range && { backgroundColor: theme.primary, borderColor: theme.primary }
       ]}
       onPress={() => setTimeRange(range)}
     >
       <Text style={[
         styles.timeRangeButtonText,
-        timeRange === range && { color: theme.text }
+        { color: timeRange === range ? '#FFFFFF' : '#999999' }
       ]}>
         {label}
       </Text>
@@ -253,28 +279,35 @@ export default function StockDetailScreen({ route, navigation }) {
   return (
     <ScrollView style={[styles.container, { backgroundColor: theme.background }]}>
       <View style={[styles.header, { backgroundColor: theme.surface }]}>
-        <Text style={[styles.symbol, { color: theme.text }]}>{stockData.symbol}</Text>
+        <View style={styles.headerTop}>
+          <Text style={[styles.symbol, { color: theme.text }]}>{stockData.symbol}</Text>
+          <TouchableOpacity onPress={toggleWatchlist} style={styles.watchlistButton}>
+            <Ionicons 
+              name={inWatchlist ? "star" : "star-outline"} 
+              size={24} 
+              color={inWatchlist ? theme.primary : theme.text} 
+            />
+          </TouchableOpacity>
+        </View>
         <Text style={[styles.price, { color: theme.text }]}>
-          ₹{parseFloat(stockData.price).toLocaleString('en-IN')}
+          ₹{parseFloat(stockData.price).toFixed(2)}
         </Text>
         <Text
           style={[
             styles.change,
             parseFloat(stockData.change) >= 0
-              ? { color: theme.success }
-              : { color: theme.error }
+              ? { color: '#4CAF50' }
+              : { color: '#F44336' }
           ]}
         >
           {parseFloat(stockData.change) >= 0 ? '+' : ''}
-          {stockData.change} ({stockData.changePercent}%)
+          {parseFloat(stockData.change).toFixed(2)} (
+          {parseFloat(stockData.changePercent).toFixed(2)}%)
         </Text>
       </View>
 
       {chartData && (
-        <View style={[styles.chartContainer, { 
-          backgroundColor: theme.card,
-          borderColor: theme.border 
-        }]}>
+        <View style={styles.chartContainer}>
           <View style={styles.timeRangeContainer}>
             <TimeRangeButton range="1d" label="1D" />
             <TimeRangeButton range="5d" label="5D" />
@@ -284,21 +317,21 @@ export default function StockDetailScreen({ route, navigation }) {
           </View>
           <LineChart
             data={chartData}
-            width={screenWidth - 32}
+            width={screenWidth - 64}
             height={220}
             chartConfig={{
-              backgroundColor: theme.card,
-              backgroundGradientFrom: theme.card,
-              backgroundGradientTo: theme.card,
+              backgroundColor: 'transparent',
+              backgroundGradientFrom: 'transparent',
+              backgroundGradientTo: 'transparent',
               decimalPlaces: 2,
-              color: (opacity = 1) => theme.text,
-              labelColor: (opacity = 1) => theme.text,
+              color: (opacity = 1) => theme.primary,
+              labelColor: (opacity = 1) => '#999999',
               style: {
                 borderRadius: 16,
               },
               propsForDots: {
-                r: "4",
-                strokeWidth: "2",
+                r: "3",
+                strokeWidth: "1",
                 stroke: theme.primary
               }
             }}
@@ -316,7 +349,7 @@ export default function StockDetailScreen({ route, navigation }) {
         <View style={styles.detailsRow}>
           <Text style={[styles.detailsLabel, { color: theme.textSecondary }]}>Previous Close</Text>
           <Text style={[styles.detailsValue, { color: theme.text }]}>
-            ₹{parseFloat(stockData.previousClose).toLocaleString('en-IN')}
+            ₹{stockData.chartPreviousClose.toLocaleString('en-IN')}
           </Text>
         </View>
         <View style={styles.detailsRow}>

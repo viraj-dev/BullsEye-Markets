@@ -11,7 +11,7 @@ import {
 import { useWatchlist } from '../context/WatchlistContext';
 import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 
 const headers = {
   'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36',
@@ -28,14 +28,31 @@ export default function WatchlistScreen({ navigation }) {
   const fetchStockData = async (symbol) => {
     try {
       const response = await axios.get(
-        `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}.NS?interval=1d&range=1d`,
+        `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=1d`,
         { headers }
       );
-      const quote = response.data.chart.result[0].meta;
+      
+      if (!response.data.chart.result || response.data.chart.result.length === 0) {
+        return null;
+      }
+
+      const result = response.data.chart.result[0];
+      const meta = result.meta;
+      const quote = result.indicators.quote[0];
+
+      if (!meta || !quote) {
+        return null;
+      }
+
+      const currentPrice = meta.regularMarketPrice || 0;
+      const previousClose = meta.chartPreviousClose || 0;
+      const change = currentPrice - previousClose;
+      const changePercent = (change / previousClose) * 100;
+
       return {
-        currentPrice: quote.regularMarketPrice,
-        change: quote.regularMarketChange,
-        changePercent: quote.regularMarketChangePercent,
+        currentPrice,
+        change,
+        changePercent,
       };
     } catch (error) {
       console.error(`Error fetching data for ${symbol}:`, error);
@@ -47,19 +64,21 @@ export default function WatchlistScreen({ navigation }) {
     setRefreshing(true);
     try {
       const updatedData = {};
-      await Promise.all(
-        watchlist.map(async (stock) => {
-          const data = await fetchStockData(stock.symbol);
-          if (data) {
-            updatedData[stock.symbol] = data;
-          }
-        })
-      );
+      for (const stock of watchlist) {
+        const data = await fetchStockData(stock.symbol);
+        if (data) {
+          updatedData[stock.symbol] = data;
+        }
+      }
       setStockData(updatedData);
     } catch (error) {
       console.error('Error refreshing watchlist:', error);
     }
     setRefreshing(false);
+  }, [watchlist]);
+
+  useEffect(() => {
+    onRefresh();
   }, [watchlist]);
 
   const renderItem = ({ item }) => {
@@ -70,7 +89,7 @@ export default function WatchlistScreen({ navigation }) {
         onPress={() => navigation.navigate('StockDetail', { symbol: item.symbol })}
       >
         <View style={styles.stockInfo}>
-          <Text style={styles.symbol}>{item.symbol}</Text>
+          <Text style={styles.symbol}>{item.symbol.replace('.NS', '')}</Text>
           <Text style={styles.name} numberOfLines={1}>{item.name}</Text>
         </View>
         <View style={styles.priceInfo}>
@@ -81,18 +100,18 @@ export default function WatchlistScreen({ navigation }) {
                 styles.change,
                 data.change >= 0 ? styles.positive : styles.negative
               ]}>
-                {data.change >= 0 ? '+' : ''}{data.changePercent.toFixed(2)}%
+                {data.change >= 0 ? '+' : ''}{data.change.toFixed(2)} ({data.changePercent.toFixed(2)}%)
               </Text>
             </>
           ) : (
-            <ActivityIndicator size="small" color="#007AFF" />
+            <ActivityIndicator size="small" color="#FFFFFF" />
           )}
         </View>
         <TouchableOpacity
           style={styles.removeButton}
           onPress={() => removeFromWatchlist(item.symbol)}
         >
-          <Ionicons name="close-circle" size={24} color="#FF3B30" />
+          <Ionicons name="close-circle" size={24} color="#F44336" />
         </TouchableOpacity>
       </TouchableOpacity>
     );
@@ -121,24 +140,18 @@ export default function WatchlistScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#000000',
   },
   stockCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: '#1A1A1A',
     padding: 16,
     marginHorizontal: 16,
     marginVertical: 8,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#333333',
   },
   stockInfo: {
     flex: 1,
@@ -147,11 +160,11 @@ const styles = StyleSheet.create({
   symbol: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#1c1c1e',
+    color: '#FFFFFF',
   },
   name: {
     fontSize: 14,
-    color: '#8e8e93',
+    color: '#999999',
     marginTop: 4,
   },
   priceInfo: {
@@ -161,7 +174,7 @@ const styles = StyleSheet.create({
   price: {
     fontSize: 17,
     fontWeight: '600',
-    color: '#1c1c1e',
+    color: '#FFFFFF',
   },
   change: {
     fontSize: 15,
@@ -169,10 +182,10 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   positive: {
-    color: '#34C759',
+    color: '#4CAF50',
   },
   negative: {
-    color: '#FF3B30',
+    color: '#F44336',
   },
   removeButton: {
     padding: 4,
@@ -186,11 +199,11 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#8e8e93',
+    color: '#999999',
   },
   emptySubText: {
     fontSize: 14,
-    color: '#8e8e93',
+    color: '#999999',
     marginTop: 8,
   },
 }); 
