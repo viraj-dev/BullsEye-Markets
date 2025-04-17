@@ -1,0 +1,37 @@
+{
+  "expo": {
+    "name": "BullsEye Markets",
+    "slug": "stock-market-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      }
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [],
+    "newArchEnabled": true,
+    "extra": {
+      "eas": {
+        "projectId": "e33fbba2-08cb-4846-a16b-d91a1f446431"
+      }
+    }
+  }
+}
