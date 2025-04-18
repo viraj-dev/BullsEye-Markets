@@ -15,7 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useWatchlist } from '../context/WatchlistContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../context/ThemeContext';
-import { LineChart } from 'react-native-chart-kit';
+import { LineChart, Grid } from 'react-native-svg-charts';
 
 const screenWidth = Dimensions.get('window').width;
 
@@ -260,6 +260,35 @@ export default function StockDetailScreen({ route, navigation }) {
     </TouchableOpacity>
   );
 
+  const renderChart = () => {
+    if (!chartData || !chartData.datasets || !chartData.datasets[0].data) {
+      return null;
+    }
+
+    const data = chartData.datasets[0].data;
+    const contentInset = { top: 20, bottom: 20 };
+
+    return (
+      <View style={styles.chartContainer}>
+        <View style={styles.timeRangeContainer}>
+          <TimeRangeButton range="1d" label="1D" />
+          <TimeRangeButton range="5d" label="5D" />
+          <TimeRangeButton range="1mo" label="1M" />
+          <TimeRangeButton range="3mo" label="3M" />
+          <TimeRangeButton range="1y" label="1Y" />
+        </View>
+        <LineChart
+          style={{ height: 220, width: screenWidth - 64 }}
+          data={data}
+          svg={{ stroke: theme.primary }}
+          contentInset={contentInset}
+        >
+          <Grid />
+        </LineChart>
+      </View>
+    );
+  };
+
   if (loading) {
     return (
       <View style={[styles.container, { backgroundColor: theme.background }]}>
@@ -306,40 +335,7 @@ export default function StockDetailScreen({ route, navigation }) {
         </Text>
       </View>
 
-      {chartData && (
-        <View style={styles.chartContainer}>
-          <View style={styles.timeRangeContainer}>
-            <TimeRangeButton range="1d" label="1D" />
-            <TimeRangeButton range="5d" label="5D" />
-            <TimeRangeButton range="1mo" label="1M" />
-            <TimeRangeButton range="3mo" label="3M" />
-            <TimeRangeButton range="1y" label="1Y" />
-          </View>
-          <LineChart
-            data={chartData}
-            width={screenWidth - 64}
-            height={220}
-            chartConfig={{
-              backgroundColor: 'transparent',
-              backgroundGradientFrom: 'transparent',
-              backgroundGradientTo: 'transparent',
-              decimalPlaces: 2,
-              color: (opacity = 1) => theme.primary,
-              labelColor: (opacity = 1) => '#999999',
-              style: {
-                borderRadius: 16,
-              },
-              propsForDots: {
-                r: "3",
-                strokeWidth: "1",
-                stroke: theme.primary
-              }
-            }}
-            bezier
-            style={styles.chart}
-          />
-        </View>
-      )}
+      {renderChart()}
 
       <View style={[styles.detailsContainer, { 
         backgroundColor: theme.card,
